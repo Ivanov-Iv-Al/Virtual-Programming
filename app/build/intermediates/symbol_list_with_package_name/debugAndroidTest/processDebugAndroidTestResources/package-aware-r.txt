@@ -1,3 +1,0 @@
-com.example.andrapp.test
-style WhiteBackgroundDialogTheme
-style WhiteBackgroundTheme
