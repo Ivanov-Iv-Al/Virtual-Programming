@@ -3,9 +3,4 @@
     <string name="log_text">Калькулятор</string>
     <string name="hint_text_1">First number</string>
     <string name="hint_text_2">Second number</string>
-    <string name="provider_gps">GPS</string>
-    <string name="provider_network">Network</string>
-    <string name="location_settings">Location settings</string>
-    <string name="gps">GPS</string>
-    <string name="hint_3">Тебя вычислят по айпи(Ну или по жпс)</string>
 </resources>
