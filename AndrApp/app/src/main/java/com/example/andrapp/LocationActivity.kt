@@ -152,17 +152,7 @@ class LocationActivity : AppCompatActivity() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    fun exportJsonToPc() {
-        val sourceFile = File(filesDir, "location_history.json")
-        val desktopPath = System.getProperty("user.home") + "/Desktop/location_export.json"
 
-        try {
-            sourceFile.copyTo(File(desktopPath), overwrite = true)
-            Toast.makeText(this, "Файл сохранён на Рабочий стол", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
 
     private fun requestLocationPermission() {
         ActivityCompat.requestPermissions(
