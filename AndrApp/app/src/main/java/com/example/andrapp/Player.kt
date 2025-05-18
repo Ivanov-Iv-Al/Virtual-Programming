@@ -8,9 +8,9 @@ import android.content.pm.PackageManager
 import android.database.Cursor
 import android.media.MediaPlayer
 import android.net.Uri
-import android.os.Bundle
-import android.os.Handler
+import android.os.*
 import android.provider.MediaStore
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -38,7 +38,7 @@ class Player : AppCompatActivity() {
     private lateinit var showPlaylistsButton: Button
     private lateinit var albumArt: ImageView
 
-    private val handler = Handler()
+    private val handler = Handler(Looper.getMainLooper())
     private var isPlaying = false
     private var currentTrackIndex = 0
     private var tracks = mutableListOf<Track>()
@@ -46,6 +46,7 @@ class Player : AppCompatActivity() {
     private lateinit var sharedPrefs: SharedPreferences
 
     companion object {
+        private const val TAG = "MusicPlayer"
         private const val REQUEST_PERMISSION = 1
         private const val REQUEST_PICK_MUSIC = 2
         private const val PREFS_NAME = "MusicPlayerPrefs"
@@ -71,6 +72,7 @@ class Player : AppCompatActivity() {
         setupMediaPlayer()
         setupButtons()
         loadPlaylists()
+        checkPermissions()
     }
 
     private fun initViews() {
@@ -85,12 +87,23 @@ class Player : AppCompatActivity() {
         showPlaylistsButton = findViewById(R.id.showPlaylistsButton)
         albumArt = findViewById(R.id.albumArt)
         sharedPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        albumArt.setImageResource(R.drawable.ic_music_note)
     }
 
     private fun setupMediaPlayer() {
-        mediaPlayer = MediaPlayer()
-        mediaPlayer.setOnCompletionListener {
-            nextTrack()
+        mediaPlayer = MediaPlayer().apply {
+            setOnCompletionListener { nextTrack() }
+            setOnPreparedListener {
+                start()
+                this@Player.isPlaying = true
+                playButton.text = "Pause"
+                startSeekbarUpdate()
+            }
+            setOnErrorListener { _, what, extra ->
+                Log.e(TAG, "Error what=$what extra=$extra")
+                showToast("Ошибка воспроизведения")
+                false
+            }
         }
     }
 
@@ -126,14 +139,106 @@ class Player : AppCompatActivity() {
 
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser && ::mediaPlayer.isInitialized) {
+                if (fromUser && mediaPlayer.isPlaying) {
                     mediaPlayer.seekTo(progress)
                 }
             }
-
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+    }
+
+    private fun checkPermissions() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                REQUEST_PERMISSION
+            )
+        }
+    }
+
+    private fun startSeekbarUpdate() {
+        handler.post(object : Runnable {
+            override fun run() {
+                if (mediaPlayer.isPlaying) {
+                    seekBar.progress = mediaPlayer.currentPosition
+                    seekBar.max = mediaPlayer.duration
+                    handler.postDelayed(this, 1000)
+                }
+            }
+        })
+    }
+
+    private fun playTrack(index: Int) {
+        if (index < 0 || index >= tracks.size) return
+
+        try {
+            mediaPlayer.reset()
+            mediaPlayer.setDataSource(applicationContext, tracks[index].uri)
+            mediaPlayer.prepareAsync()
+            currentTrackIndex = index
+            trackName.text = tracks[index].name
+            loadAlbumArt(tracks[index].albumId)
+        } catch (e: Exception) {
+            Log.e(TAG, "Play track error", e)
+            showToast("Ошибка: ${e.message}")
+        }
+    }
+
+    private fun loadAlbumArt(albumId: Long) {
+        try {
+            val albumArtUri = ContentUris.withAppendedId(
+                Uri.parse("content://media/external/audio/albumart"),
+                albumId
+            )
+            albumArt.setImageURI(null)
+            albumArt.setImageURI(albumArtUri)
+            if (albumArt.drawable == null) {
+                albumArt.setImageResource(R.drawable.ic_music_note)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Load album art error", e)
+            albumArt.setImageResource(R.drawable.ic_music_note)
+        }
+    }
+
+    private fun playMusic() {
+        if (!mediaPlayer.isPlaying) {
+            if (mediaPlayer.currentPosition > 0) {
+                mediaPlayer.start()
+            } else {
+                playTrack(currentTrackIndex)
+            }
+            isPlaying = true
+            playButton.text = "Pause"
+            startSeekbarUpdate()
+        }
+    }
+
+    private fun pauseMusic() {
+        if (mediaPlayer.isPlaying) {
+            mediaPlayer.pause()
+            isPlaying = false
+            playButton.text = "Play"
+            handler.removeCallbacksAndMessages(null)
+        }
+    }
+
+    private fun nextTrack() {
+        if (tracks.isEmpty()) return
+        currentTrackIndex = if (currentTrackIndex < tracks.size - 1) currentTrackIndex + 1 else 0
+        playTrack(currentTrackIndex)
+    }
+
+    private fun previousTrack() {
+        if (tracks.isEmpty()) return
+        currentTrackIndex = if (currentTrackIndex > 0) currentTrackIndex - 1 else tracks.size - 1
+        playTrack(currentTrackIndex)
     }
 
     private fun showAllSongsDialog() {
@@ -162,7 +267,7 @@ class Player : AppCompatActivity() {
         val songsRecyclerView = dialogView.findViewById<RecyclerView>(R.id.songsRecyclerView)
 
         val allSongs = getAllSongsFromStorage()
-        val adapter = SongAdapter(allSongs) { /* Selection handled differently for playlists */ }
+        val adapter = SongAdapter(allSongs) { }
         adapter.setMultiSelectMode(true)
 
         songsRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -200,7 +305,7 @@ class Player : AppCompatActivity() {
             override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PlaylistViewHolder {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.item_playlist, parent, false)
-                return PlaylistViewHolder(view, this) // Передаем адаптер
+                return PlaylistViewHolder(view, this)
             }
 
             override fun onBindViewHolder(holder: PlaylistViewHolder, position: Int) {
@@ -272,23 +377,27 @@ class Player : AppCompatActivity() {
 
     private fun getAllSongsFromStorage(): List<Track> {
         val songs = mutableListOf<Track>()
-        val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return songs
+        }
+
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ALBUM_ID,
-            MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.DATA
+            MediaStore.Audio.Media.DURATION
         )
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
-        val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
         contentResolver.query(
-            collection,
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
             projection,
-            selection,
+            "${MediaStore.Audio.Media.IS_MUSIC} != 0",
             null,
-            sortOrder
+            "${MediaStore.Audio.Media.TITLE} ASC"
         )?.use { cursor ->
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID))
@@ -296,7 +405,6 @@ class Player : AppCompatActivity() {
                 val albumId = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID))
                 val duration = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION))
                 val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-
                 songs.add(Track(uri, name, albumId, duration))
             }
         }
@@ -320,25 +428,11 @@ class Player : AppCompatActivity() {
     }
 
     private fun browseMusic() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.type = "audio/*"
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-        startActivityForResult(Intent.createChooser(intent, "Выберите музыку"), REQUEST_PICK_MUSIC)
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_PERMISSION) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                browseMusic()
-            } else {
-                showToast("Разрешение необходимо для выбора музыки")
-            }
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "audio/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
         }
+        startActivityForResult(Intent.createChooser(intent, "Выберите музыку"), REQUEST_PICK_MUSIC)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -346,15 +440,16 @@ class Player : AppCompatActivity() {
         if (requestCode == REQUEST_PICK_MUSIC && resultCode == RESULT_OK) {
             tracks.clear()
 
-            if (data?.clipData != null) {
-                val clipData = data.clipData
-                for (i in 0 until (clipData?.itemCount ?: 0)) {
-                    clipData?.getItemAt(i)?.uri?.let { uri ->
+
+            data?.clipData?.let { clipData ->
+                for (i in 0 until clipData.itemCount) {
+                    clipData.getItemAt(i)?.uri?.let { uri ->
                         addTrackFromUri(uri)
                     }
                 }
-            } else if (data?.data != null) {
-                data.data?.let { uri ->
+            } ?: run {
+
+                data?.data?.let { uri ->
                     addTrackFromUri(uri)
                 }
             }
@@ -367,93 +462,24 @@ class Player : AppCompatActivity() {
     }
 
     private fun addTrackFromUri(uri: Uri) {
-        val projection = arrayOf(
-            MediaStore.Audio.Media.TITLE,
-            MediaStore.Audio.Media.ALBUM_ID,
-            MediaStore.Audio.Media.DURATION
-        )
-        contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val name = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE))
-                val albumId = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID))
-                val duration = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION))
-                tracks.add(Track(uri, name, albumId, duration))
-            }
-        }
-    }
-
-    private fun playTrack(index: Int) {
-        if (index < 0 || index >= tracks.size) return
-
         try {
-            mediaPlayer.reset()
-            mediaPlayer.setDataSource(this, tracks[index].uri)
-            mediaPlayer.prepare()
-            mediaPlayer.start()
-            isPlaying = true
-            playButton.text = "Pause"
-            trackName.text = tracks[index].name
-            seekBar.max = mediaPlayer.duration
-            updateSeekBar()
-            loadAlbumArt(tracks[index].albumId)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            showToast("Ошибка воспроизведения трека")
-        }
-    }
+            val projection = arrayOf(
+                MediaStore.Audio.Media.TITLE,
+                MediaStore.Audio.Media.ALBUM_ID,
+                MediaStore.Audio.Media.DURATION
+            )
 
-    private fun loadAlbumArt(albumId: Long) {
-        val albumArtUri = ContentUris.withAppendedId(
-            Uri.parse("content://media/external/audio/albumart"),
-            albumId
-        )
-        albumArt.setImageURI(albumArtUri)
-        if (albumArt.drawable == null) {
-            albumArt.setImageResource(R.drawable.ic_music_note)
-        }
-    }
-
-    private fun playMusic() {
-        mediaPlayer.start()
-        isPlaying = true
-        playButton.text = "Pause"
-    }
-
-    private fun pauseMusic() {
-        mediaPlayer.pause()
-        isPlaying = false
-        playButton.text = "Play"
-    }
-
-    private fun nextTrack() {
-        if (tracks.isEmpty()) return
-
-        if (currentTrackIndex < tracks.size - 1) {
-            currentTrackIndex++
-        } else {
-            currentTrackIndex = 0
-        }
-        playTrack(currentTrackIndex)
-    }
-
-    private fun previousTrack() {
-        if (tracks.isEmpty()) return
-
-        if (currentTrackIndex > 0) {
-            currentTrackIndex--
-        } else {
-            currentTrackIndex = tracks.size - 1
-        }
-        playTrack(currentTrackIndex)
-    }
-
-    private fun updateSeekBar() {
-        handler.postDelayed({
-            if (::mediaPlayer.isInitialized && isPlaying) {
-                seekBar.progress = mediaPlayer.currentPosition
-                updateSeekBar()
+            contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val name = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE))
+                    val albumId = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID))
+                    val duration = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION))
+                    tracks.add(Track(uri, name, albumId, duration))
+                }
             }
-        }, 1000)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error adding track from URI", e)
+        }
     }
 
     private fun savePlaylists() {
@@ -463,9 +489,9 @@ class Player : AppCompatActivity() {
 
     private fun loadPlaylists() {
         val json = sharedPrefs.getString("playlists", null)
-        if (json != null) {
+        json?.let {
             val type = object : TypeToken<List<Playlist>>() {}.type
-            playlists = Gson().fromJson(json, type) ?: mutableListOf()
+            playlists = Gson().fromJson(it, type) ?: mutableListOf()
         }
     }
 
@@ -473,12 +499,34 @@ class Player : AppCompatActivity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            REQUEST_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    loadTracks()
+                } else {
+                    showToast("Необходимы разрешения для доступа к музыке")
+                }
+            }
+        }
+    }
+
+    private fun loadTracks() {
+        tracks.addAll(getAllSongsFromStorage())
+        if (tracks.isNotEmpty()) {
+            playTrack(0)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        if (::mediaPlayer.isInitialized) {
-            mediaPlayer.release()
-        }
         handler.removeCallbacksAndMessages(null)
+        mediaPlayer.release()
     }
 }
 
@@ -513,25 +561,27 @@ class SongAdapter(
                 track.albumId
             )
             albumArt.setImageURI(albumArtUri)
-
             if (albumArt.drawable == null) {
                 albumArt.setImageResource(R.drawable.ic_music_note)
             }
 
             itemView.isSelected = selectedSongs.contains(track)
-
             itemView.setOnClickListener {
                 if (isMultiSelectMode) {
-                    if (selectedSongs.contains(track)) {
-                        selectedSongs.remove(track)
-                    } else {
-                        selectedSongs.add(track)
-                    }
-                    notifyItemChanged(adapterPosition)
+                    toggleSelection(track)
                 } else {
                     onItemClick(track)
                 }
             }
+        }
+
+        private fun toggleSelection(track: Player.Track) {
+            if (selectedSongs.contains(track)) {
+                selectedSongs.remove(track)
+            } else {
+                selectedSongs.add(track)
+            }
+            notifyItemChanged(adapterPosition)
         }
 
         private fun formatDuration(duration: Long): String {
