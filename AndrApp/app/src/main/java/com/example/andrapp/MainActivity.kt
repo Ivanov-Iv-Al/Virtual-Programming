@@ -37,5 +37,11 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, CalcActivity::class.java)
             startActivity(intent)
         }
+
+        val buttonServer = findViewById<Button>(R.id.button_server)
+        buttonServer.setOnClickListener {
+            val intent = Intent(this, ServerActivity::class.java)
+            startActivity(intent)
+        }
     }
 }
