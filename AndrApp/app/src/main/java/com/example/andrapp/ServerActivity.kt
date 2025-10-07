@@ -1,14 +1,18 @@
 package com.example.andrapp
 
 import android.os.Bundle
+import android.os.Environment
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.gson.Gson
 import kotlinx.coroutines.*
 import java.io.*
 import java.net.Socket
+import java.util.*
+import com.google.gson.reflect.TypeToken
 
 class ServerActivity : AppCompatActivity() {
 
@@ -17,11 +21,13 @@ class ServerActivity : AppCompatActivity() {
     private lateinit var textViewResponse: TextView
     private lateinit var buttonConnect: Button
     private lateinit var buttonDisconnect: Button
+    private lateinit var buttonSendLocation: Button // Новая кнопка для отправки локации
 
     private var socket: Socket? = null
     private var outputStream: BufferedWriter? = null
     private var inputStream: BufferedReader? = null
     private var isConnected = false
+    private val gson = Gson()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,8 +43,10 @@ class ServerActivity : AppCompatActivity() {
         textViewResponse = findViewById(R.id.textViewResponse)
         buttonConnect = findViewById(R.id.buttonConnect)
         buttonDisconnect = findViewById(R.id.buttonDisconnect)
+        buttonSendLocation = findViewById(R.id.buttonSendLocation) // Добавьте эту кнопку в layout
 
         editTextMessage.isEnabled = true
+        buttonSendLocation.isEnabled = false
     }
 
     private fun setupClickListeners() {
@@ -53,6 +61,10 @@ class ServerActivity : AppCompatActivity() {
         buttonSend.setOnClickListener {
             sendMessage()
         }
+
+        buttonSendLocation.setOnClickListener {
+            sendLocationData()
+        }
     }
 
     private fun connectToServer() {
@@ -61,10 +73,11 @@ class ServerActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                socket = Socket("10.0.2.2", 12345)
-
-                outputStream = BufferedWriter(OutputStreamWriter(socket!!.getOutputStream()))
-                inputStream = BufferedReader(InputStreamReader(socket!!.getInputStream()))
+                withContext(Dispatchers.IO) {
+                    socket = Socket("10.0.2.2", 12345)
+                    outputStream = BufferedWriter(OutputStreamWriter(socket!!.getOutputStream()))
+                    inputStream = BufferedReader(InputStreamReader(socket!!.getInputStream()))
+                }
 
                 textViewResponse.text = "Подключено к серверу!"
                 updateUI(true)
@@ -84,11 +97,12 @@ class ServerActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 while (isConnected && !socket!!.isClosed) {
-                    val message = inputStream?.readLine()
+                    val message = withContext(Dispatchers.IO) {
+                        inputStream?.readLine()
+                    }
                     if (message != null) {
                         textViewResponse.append("\nСервер: $message")
                     } else {
-                        // Сервер отключился
                         break
                     }
                 }
@@ -110,10 +124,11 @@ class ServerActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                // Отправляем сообщение
-                outputStream?.write(message)
-                outputStream?.newLine()
-                outputStream?.flush()
+                withContext(Dispatchers.IO) {
+                    outputStream?.write(message)
+                    outputStream?.newLine()
+                    outputStream?.flush()
+                }
 
                 textViewResponse.append("\nВы: $message")
                 editTextMessage.text.clear()
@@ -121,6 +136,50 @@ class ServerActivity : AppCompatActivity() {
                 textViewResponse.append("\nОшибка отправки: ${e.message}")
                 disconnectFromServer()
             }
+        }
+    }
+
+    private fun sendLocationData() {
+        lifecycleScope.launch {
+            try {
+                val locationData = readLocationData()
+                if (locationData.isNotEmpty()) {
+                    val latestLocation = locationData.last() // Берем последнюю запись
+                    val locationMessage = "LOCATION_DATA: ${gson.toJson(latestLocation)}"
+
+                    withContext(Dispatchers.IO) {
+                        outputStream?.write(locationMessage)
+                        outputStream?.newLine()
+                        outputStream?.flush()
+                    }
+
+                    textViewResponse.append("\nОтправлены данные локации")
+                } else {
+                    textViewResponse.append("\nНет данных о локации")
+                }
+            } catch (e: Exception) {
+                textViewResponse.append("\nОшибка отправки локации: ${e.message}")
+            }
+        }
+    }
+
+    private fun readLocationData(): List<Map<String, Any>> {
+        return try {
+            val file = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "location_history.json")
+            if (file.exists()) {
+                val fileContent = file.readText()
+                if (fileContent.isNotEmpty()) {
+                    val type = object : TypeToken<List<Map<String, Any>>>() {}.type
+                    gson.fromJson<List<Map<String, Any>>>(fileContent, type) ?: emptyList()
+                } else {
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
         }
     }
 
@@ -143,6 +202,7 @@ class ServerActivity : AppCompatActivity() {
         buttonConnect.isEnabled = !connected
         buttonDisconnect.isEnabled = connected
         buttonSend.isEnabled = connected
+        buttonSendLocation.isEnabled = connected
         editTextMessage.isEnabled = true
     }
 
