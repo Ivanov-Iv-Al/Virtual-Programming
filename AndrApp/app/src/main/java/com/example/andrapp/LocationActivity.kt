@@ -17,6 +17,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.gson.Gson
 import com.google.gson.JsonParser
+import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
@@ -123,25 +124,27 @@ class LocationActivity : AppCompatActivity() {
         )
 
         try {
-            val jsonString = gson.toJson(locationData)
-            val prettyJson = gson.toJson(jsonParser.parse(jsonString))
-
             val file = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), JSON_FILE_NAME)
 
-
-            if (!file.exists()) {
-                file.createNewFile()
-                FileWriter(file, false).use { writer ->
-                    writer.write("[\n")
+            val existingData = if (file.exists()) {
+                val fileContent = file.readText()
+                if (fileContent.isNotEmpty()) {
+                    gson.fromJson(fileContent, MutableList::class.java) as? MutableList<Map<String, *>> ?: mutableListOf()
+                } else {
+                    mutableListOf()
                 }
+            } else {
+                mutableListOf()
             }
 
-            FileWriter(file, true).use { writer ->
-                val prefix = if (file.length() > 10) ",\n" else ""
-                writer.append("${prefix}${prettyJson}")
+            existingData.add(locationData)
+
+            FileWriter(file, false).use { writer ->
+                writer.write(gson.toJson(existingData))
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            Toast.makeText(this, "Ошибка сохранения локации", Toast.LENGTH_SHORT).show()
         }
     }
 
