@@ -6,14 +6,15 @@ import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.*
 import org.zeromq.ZMQ
 import java.io.File
-import java.io.FileWriter
 import android.os.Environment
 import android.util.Log
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ServerActivity : AppCompatActivity() {
 
@@ -27,11 +28,12 @@ class ServerActivity : AppCompatActivity() {
     private var context: ZMQ.Context? = null
     private var socket: ZMQ.Socket? = null
     private var isConnected = false
-    private val gson = Gson()
+    private val gson = GsonBuilder().setPrettyPrinting().create()
 
     companion object {
-        private const val SERVER_ADDRESS = "tcp://192.168.56.1:12345"
+        private const val SERVER_ADDRESS = "tcp://10.23.14.10:12345"
         private const val CONNECTION_TIMEOUT = 3000
+        private const val TAG = "ServerActivity"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,165 +56,14 @@ class ServerActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
-        buttonConnect.setOnClickListener {
-            connectToServer()
-        }
-
-        buttonDisconnect.setOnClickListener {
-            disconnectFromServer()
-        }
-
-        buttonSend.setOnClickListener {
-            sendMessage()
-        }
-
-        buttonSendLocation.setOnClickListener {
-            sendLocationData()
-        }
-    }
-
-    private fun connectToServer() {
-        textViewResponse.text = "Подключение к серверу"
-        buttonConnect.isEnabled = false
-
-        lifecycleScope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    context = ZMQ.context(1)
-
-                    socket = context?.socket(ZMQ.REQ)
-
-                    socket?.setReceiveTimeOut(CONNECTION_TIMEOUT)
-
-                    socket?.connect(SERVER_ADDRESS)
-
-                    socket?.send("TEST_CONNECTION".toByteArray(), 0)
-                    val response = socket?.recvStr(0)
-
-                    if (response != null) {
-                        withContext(Dispatchers.Main) {
-                            textViewResponse.text = "✅ Подключено к ZeroMQ серверу!"
-                            updateUI(true)
-                            isConnected = true
-                        }
-                    } else {
-                        throw Exception("Нет ответа от сервера")
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    textViewResponse.text = "Ошибка подключения: ${e.message}"
-                    updateUI(false)
-                    isConnected = false
-                    disconnectFromServer()
-                }
-            }
-        }
-    }
-
-    private fun sendMessage() {
-        val message = editTextMessage.text.toString().trim()
-        if (message.isEmpty()) {
-            textViewResponse.append("\n⚠Введите сообщение")
-            return
-        }
-
-        lifecycleScope.launch {
-            try {
-                val response = withContext(Dispatchers.IO) {
-                    socket?.send(message.toByteArray(), 0)
-                    socket?.recvStr(0)
-                }
-
-                withContext(Dispatchers.Main) {
-                    textViewResponse.append("\nВы: $message")
-                    textViewResponse.append("\nСервер: $response")
-                    editTextMessage.text.clear()
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    textViewResponse.append("\nОшибка отправки: ${e.message}")
-                    disconnectFromServer()
-                }
-            }
-        }
-    }
-
-    private fun sendLocationData() {
-        lifecycleScope.launch {
-            try {
-                val locationData = readLocationData()
-                if (locationData.isNotEmpty()) {
-                    val latestLocation = locationData.last()
-                    val locationMessage = "LOCATION_DATA: ${gson.toJson(latestLocation)}"
-
-                    val response = withContext(Dispatchers.IO) {
-                        socket?.send(locationMessage.toByteArray(), 0)
-                        socket?.recvStr(0)
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        textViewResponse.append("\nОтправлены данные локации")
-                        textViewResponse.append("\nСервер: $response")
-
-                        Log.d("ZMQ_LOCATION", "Отправлена локация: $latestLocation")
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        textViewResponse.append("\nНет данных о локации")
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    textViewResponse.append("\nОшибка отправки локации: ${e.message}")
-                    Log.e("ZMQ_LOCATION", "Ошибка отправки локации", e)
-                }
-            }
-        }
-    }
-
-    private fun readLocationData(): List<Map<String, Any>> {
-        return try {
-            val file = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "location_history.json")
-            if (file.exists()) {
-                val fileContent = file.readText()
-                if (fileContent.isNotEmpty()) {
-                    val type = object : TypeToken<List<Map<String, Any>>>() {}.type
-                    gson.fromJson<List<Map<String, Any>>>(fileContent, type) ?: emptyList()
-                } else {
-                    emptyList()
-                }
-            } else {
-                emptyList()
-            }
-        } catch (e: Exception) {
-            Log.e("ServerActivity", "Ошибка чтения локации", e)
-            emptyList()
-        }
-    }
-
-    private fun disconnectFromServer() {
-        lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    socket?.close()
-                    context?.term()
-                } catch (e: Exception) {
-                    Log.e("ServerActivity", "Ошибка закрытия соединения", e)
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                isConnected = false
-                socket = null
-                context = null
-                updateUI(false)
-                textViewResponse.append("\n🔌 Отключено от сервера")
-            }
-        }
+        buttonConnect.setOnClickListener { connectToServer() }
+        buttonDisconnect.setOnClickListener { disconnectFromServer() }
+        buttonSend.setOnClickListener { sendMessage() }
+        buttonSendLocation.setOnClickListener { sendLocationData() }
     }
 
     private fun updateUI(connected: Boolean) {
+        isConnected = connected
         buttonConnect.isEnabled = !connected
         buttonDisconnect.isEnabled = connected
         buttonSend.isEnabled = connected
@@ -220,8 +71,91 @@ class ServerActivity : AppCompatActivity() {
         editTextMessage.isEnabled = connected
     }
 
+    private fun connectToServer() {
+        textViewResponse.text = "Подключение к серверу..."
+        buttonConnect.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    context = ZMQ.context(1)
+                    socket = context?.socket(ZMQ.REQ)
+                    socket?.receiveTimeOut = CONNECTION_TIMEOUT
+                    socket?.connect(SERVER_ADDRESS)
+
+                    socket?.send("CONNECT_TEST".toByteArray(ZMQ.CHARSET), 0)
+                    socket?.recvStr(0)
+                }
+
+                if (response != null) {
+                    textViewResponse.text = "Подключено!\nОтвет: $response"
+                    updateUI(true)
+                } else {
+                    throw Exception("Таймаут ответа")
+                }
+            } catch (e: Exception) {
+                textViewResponse.text = "Ошибка: ${e.message}"
+                disconnectFromServer()
+            }
+        }
+    }
+
+    private fun sendMessage() {
+        val message = editTextMessage.text.toString().trim()
+        if (message.isEmpty()) return
+
+        lifecycleScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    socket?.send(message.toByteArray(ZMQ.CHARSET), 0)
+                    socket?.recvStr(0)
+                }
+                appendToResponse("Вы: $message\nСервер: $response")
+                editTextMessage.text.clear()
+            } catch (e: Exception) {
+                appendToResponse("Ошибка отправки: ${e.message}")
+            }
+        }
+    }
+
+    private fun disconnectFromServer() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            socket?.close()
+            context?.term()
+            socket = null
+            context = null
+        }
+        updateUI(false)
+        textViewResponse.text = "Отключено"
+    }
+
+    private fun appendToResponse(text: String) {
+        val currentText = textViewResponse.text.toString()
+        textViewResponse.text = "$text\n---\n$currentText"
+    }
+
+    private fun sendLocationData() {
+        lifecycleScope.launch {
+            try {
+                val file = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "location_history.json")
+                if (file.exists()) {
+                    val content = withContext(Dispatchers.IO) { file.readText() }
+                    val response = withContext(Dispatchers.IO) {
+                        socket?.send(content.toByteArray(ZMQ.CHARSET), 0)
+                        socket?.recvStr(0)
+                    }
+                    appendToResponse("Локация отправлена. Сервер: $response")
+                } else {
+                    appendToResponse("Файл локации не найден")
+                }
+            } catch (e: Exception) {
+                appendToResponse("Ошибка файла: ${e.message}")
+            }
+        }
+    }
+
     override fun onDestroy() {
-        super.onDestroy()
         disconnectFromServer()
+        super.onDestroy()
     }
 }
