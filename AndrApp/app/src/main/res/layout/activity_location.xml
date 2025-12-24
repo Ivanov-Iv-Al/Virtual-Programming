@@ -5,38 +5,314 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/tvLatitude"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:text="Широта: -"/>
+        android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/tvLongitude"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:text="Долгота: -"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/tvAltitude"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:text="Высота: -"/>
+            <!-- Location Information -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:text="Location Information"
+                android:layout_marginTop="10dp"/>
 
-    <TextView
-        android:id="@+id/tvAccuracy"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:text="Точность: -"/>
+            <TextView
+                android:id="@+id/tvLatitude"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Широта: -"/>
 
-    <TextView
-        android:id="@+id/tvTime"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:text="Время: -"/>
+            <TextView
+                android:id="@+id/tvLongitude"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Долгота: -"/>
+
+            <TextView
+                android:id="@+id/tvAltitude"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Высота: -"/>
+
+            <TextView
+                android:id="@+id/tvAccuracy"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Точность: -"/>
+
+            <TextView
+                android:id="@+id/tvSpeed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Скорость: - м/с"/>
+
+            <TextView
+                android:id="@+id/tvTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Время: -"/>
+
+            <!-- Network Information -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:text="Network Information"
+                android:layout_marginTop="20dp"/>
+
+            <TextView
+                android:id="@+id/tvNetworkType"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Тип сети: -"/>
+
+            <TextView
+                android:id="@+id/tvSignalLevel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Уровень сигнала: -"/>
+
+            <!-- Wi-Fi Information -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:text="Wi-Fi Information"
+                android:layout_marginTop="20dp"/>
+
+            <TextView
+                android:id="@+id/tvWifiSSID"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Wi-Fi SSID: -"/>
+
+            <TextView
+                android:id="@+id/tvWifiBSSID"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Wi-Fi BSSID: -"/>
+
+            <TextView
+                android:id="@+id/tvWifiRSSI"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Wi-Fi RSSI: - dBm"/>
+
+            <TextView
+                android:id="@+id/tvWifiFrequency"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="Wi-Fi Frequency: - MHz"/>
+
+            <!-- LTE Information -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:text="LTE Information"
+                android:layout_marginTop="20dp"/>
+
+            <TextView
+                android:id="@+id/tvLTE_MCC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="MCC: -"/>
+
+            <TextView
+                android:id="@+id/tvLTE_MNC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="MNC: -"/>
+
+            <TextView
+                android:id="@+id/tvLTE_TAC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="TAC: -"/>
+
+            <TextView
+                android:id="@+id/tvLTE_PCI"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="PCI: -"/>
+
+            <TextView
+                android:id="@+id/tvLTE_EARFCN"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="EARFCN: -"/>
+
+            <TextView
+                android:id="@+id/tvLTE_RSRP"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="RSRP: - dBm"/>
+
+            <TextView
+                android:id="@+id/tvLTE_RSRQ"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="RSRQ: - dB"/>
+
+            <TextView
+                android:id="@+id/tvLTE_RSSNR"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="RSSNR: - dB"/>
+
+            <!-- GSM Information -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:text="GSM Information"
+                android:layout_marginTop="20dp"/>
+
+            <TextView
+                android:id="@+id/tvGSM_MCC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="MCC: -"/>
+
+            <TextView
+                android:id="@+id/tvGSM_MNC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="MNC: -"/>
+
+            <TextView
+                android:id="@+id/tvGSM_LAC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="LAC: -"/>
+
+            <TextView
+                android:id="@+id/tvGSM_CID"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="CID: -"/>
+
+            <TextView
+                android:id="@+id/tvGSM_BSIC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="BSIC: -"/>
+
+            <TextView
+                android:id="@+id/tvGSM_ARFCN"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="ARFCN: -"/>
+
+            <TextView
+                android:id="@+id/tvGSM_RSSI"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="RSSI: - dBm"/>
+
+            <!-- 5G NR Information -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:text="5G NR Information"
+                android:layout_marginTop="20dp"/>
+
+            <TextView
+                android:id="@+id/tvNR_MCC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="MCC: -"/>
+
+            <TextView
+                android:id="@+id/tvNR_MNC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="MNC: -"/>
+
+            <TextView
+                android:id="@+id/tvNR_TAC"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="TAC: -"/>
+
+            <TextView
+                android:id="@+id/tvNR_NCI"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="NCI: -"/>
+
+            <TextView
+                android:id="@+id/tvNR_PCI"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="PCI: -"/>
+
+            <TextView
+                android:id="@+id/tvNR_SS_RSRP"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="SS-RSRP: - dBm"/>
+
+            <TextView
+                android:id="@+id/tvNR_SS_RSRQ"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="SS-RSRQ: - dB"/>
+
+            <TextView
+                android:id="@+id/tvNR_SS_SINR"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:text="SS-SINR: - dB"/>
+
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>
