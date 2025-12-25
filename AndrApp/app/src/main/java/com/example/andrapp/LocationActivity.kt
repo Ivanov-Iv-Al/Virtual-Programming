@@ -33,8 +33,6 @@ class LocationActivity : AppCompatActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRequest: LocationRequest
-
-    // Location Views
     private lateinit var tvLatitude: TextView
     private lateinit var tvLongitude: TextView
     private lateinit var tvAltitude: TextView
@@ -42,17 +40,14 @@ class LocationActivity : AppCompatActivity() {
     private lateinit var tvSpeed: TextView
     private lateinit var tvTime: TextView
 
-    // Network Views
     private lateinit var tvNetworkType: TextView
     private lateinit var tvSignalLevel: TextView
 
-    // Wi-Fi Views
     private lateinit var tvWifiSSID: TextView
     private lateinit var tvWifiBSSID: TextView
     private lateinit var tvWifiRSSI: TextView
     private lateinit var tvWifiFrequency: TextView
 
-    // LTE Views
     private lateinit var tvLTE_MCC: TextView
     private lateinit var tvLTE_MNC: TextView
     private lateinit var tvLTE_TAC: TextView
@@ -62,7 +57,6 @@ class LocationActivity : AppCompatActivity() {
     private lateinit var tvLTE_RSRQ: TextView
     private lateinit var tvLTE_RSSNR: TextView
 
-    // GSM Views
     private lateinit var tvGSM_MCC: TextView
     private lateinit var tvGSM_MNC: TextView
     private lateinit var tvGSM_LAC: TextView
@@ -71,7 +65,6 @@ class LocationActivity : AppCompatActivity() {
     private lateinit var tvGSM_ARFCN: TextView
     private lateinit var tvGSM_RSSI: TextView
 
-    // 5G NR Views
     private lateinit var tvNR_MCC: TextView
     private lateinit var tvNR_MNC: TextView
     private lateinit var tvNR_TAC: TextView
@@ -139,7 +132,6 @@ class LocationActivity : AppCompatActivity() {
             startLocationUpdates()
             Toast.makeText(this, "Поиск локации...", Toast.LENGTH_SHORT).show()
 
-            // Обновляем информацию о сети сразу
             updateNetworkInfo()
         } else {
             requestAllPermissions()
@@ -730,14 +722,12 @@ class LocationActivity : AppCompatActivity() {
                 return
             }
 
-            // Получаем информацию о сигнале
             val signalStrength = telephonyManager.signalStrength
             val level = signalStrength?.level ?: 0
             val signalLevelStr = signalLevelMap[level] ?: "Unknown ($level)"
 
             tvSignalLevel.text = "Уровень сигнала: $signalLevelStr"
 
-            // Устанавливаем цвет
             val color = when (signalLevelStr) {
                 "Great" -> ContextCompat.getColor(this, android.R.color.holo_green_dark)
                 "Good" -> ContextCompat.getColor(this, android.R.color.holo_orange_light)
@@ -747,7 +737,6 @@ class LocationActivity : AppCompatActivity() {
             }
             tvSignalLevel.setTextColor(color)
 
-            // 5G NR информация (требует API 29+)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
                 ContextCompat.checkSelfPermission(
                     this,
@@ -762,7 +751,6 @@ class LocationActivity : AppCompatActivity() {
                         val nrIdentity = nrCell.cellIdentity
                         val nrSignal = nrCell.cellSignalStrength
 
-                        // Используем рефлексию для получения полей
                         try {
                             val mccField = nrIdentity.javaClass.getDeclaredField("mccString")
                             mccField.isAccessible = true
@@ -808,7 +796,6 @@ class LocationActivity : AppCompatActivity() {
                             tvNR_PCI.text = "PCI: -"
                         }
 
-                        // Сигнальные параметры
                         try {
                             val ssRsrpField = nrSignal.javaClass.getDeclaredField("ssRsrp")
                             ssRsrpField.isAccessible = true
@@ -912,8 +899,6 @@ class LocationActivity : AppCompatActivity() {
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun processAllCellInfo(location: Location) {
-        // Этот метод требует API 30+, но мы его оставим пустым
-        // для сохранения обратной совместимости
     }
 
     private fun saveLocationData(location: Location) {
@@ -1052,7 +1037,7 @@ class LocationActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_WIFI_STATE
             ) == PackageManager.PERMISSION_GRANTED
         } else {
-            true // Для версий ниже Q разрешение не требуется
+            true
         }
 
         return locationFine && locationCoarse && phoneState && wifiState
@@ -1078,7 +1063,6 @@ class LocationActivity : AppCompatActivity() {
 
     private fun startLocationUpdates() {
         try {
-            // Проверяем разрешение перед запуском обновлений локации
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.ACCESS_FINE_LOCATION
@@ -1129,7 +1113,6 @@ class LocationActivity : AppCompatActivity() {
                 updateNetworkInfo()
             } else {
                 Toast.makeText(this, "Некоторые разрешения отклонены", Toast.LENGTH_LONG).show()
-                // Показываем, какие разрешения отклонены
                 val deniedPermissions = mutableListOf<String>()
                 permissions.forEachIndexed { index, permission ->
                     if (grantResults[index] != PackageManager.PERMISSION_GRANTED) {
